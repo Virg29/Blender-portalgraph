@@ -254,17 +254,21 @@ class App:
         self.root.after(REFRESH_MS, self.tick)
 
     def close(self):
-        res = self.res_var.get().lower().split("x")
+        # калибровка сохраняется всегда; поля, где введена ерунда, остаются как были
+        s = settings.load()
+        s.update(cam=self.current_cam, depth_scale=self.tracker.depth_scale, ipd_mm=self.tracker.ipd_mm,
+                 camera_latency_ms=self.tracker.camera_latency_ms,
+                 exposure_ms=self.tracker.exposure_ms, gain=self.tracker.gain)
         try:
-            settings.save({
-                "cam": self.current_cam, "width": int(res[0]), "height": int(res[1]),
-                "fps": int(self.fps_var.get()), "port": int(self.port_var.get()),
-                "depth_scale": self.tracker.depth_scale, "ipd_mm": self.tracker.ipd_mm,
-                "camera_latency_ms": self.tracker.camera_latency_ms,
-                "exposure_ms": self.tracker.exposure_ms, "gain": self.tracker.gain,
-            })
-        except (ValueError, IndexError):
+            s["width"], s["height"] = (int(v) for v in self.res_var.get().lower().split("x"))
+        except ValueError:
             pass
+        for key, var in (("fps", self.fps_var), ("port", self.port_var)):
+            try:
+                s[key] = int(var.get())
+            except ValueError:
+                pass
+        settings.save(s)
         self.server.stop()
         self.tracker.stop()
         self.root.destroy()
