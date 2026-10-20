@@ -301,19 +301,23 @@ def remove_temp_camera():
 
 
 def ensure_temp_camera(scene):
+    """Временная камера; создаётся и настраивается только если её нет.
+
+    Вызывается каждый тик, поэтому ничего не пишет в существующую камеру: любая запись
+    в свойства — пересчёт сцены и перерисовка вьюпорта, даже если значение то же.
+    """
     obj = bpy.data.objects.get(TEMP_NAME)
     if obj is None or not obj.get(TEMP_FLAG):
         data = bpy.data.cameras.new(TEMP_NAME)
+        data.sensor_fit = "AUTO"  # сенсор и сдвиг считаются по большей стороне кадра
+        data.passepartout_alpha = 1.0
+        data.show_passepartout = True
+        data.clip_start, data.clip_end = state.clip
         obj = bpy.data.objects.new(TEMP_NAME, data)
         obj[TEMP_FLAG] = True
         obj.hide_select = True
     if obj.name not in scene.collection.objects:
         scene.collection.objects.link(obj)
-    cam = obj.data
-    cam.sensor_fit = "AUTO"  # сенсор и сдвиг считаются по большей стороне кадра
-    cam.passepartout_alpha = 1.0
-    cam.show_passepartout = True
-    cam.clip_start, cam.clip_end = state.clip
     return obj
 
 
@@ -351,6 +355,7 @@ def attach(scene, window, area, props):
     # пока рамка не измерена, камера показывает ровно то, что было во вьюпорте
     cam.data.sensor_width, cam.data.lens = VIEWPORT_SENSOR, state.head_lens
     cam.data.shift_x = cam.data.shift_y = 0.0
+    cam.data.clip_start, cam.data.clip_end = state.clip
     cam.matrix_world = state.head_base
     space.use_local_camera = True  # до назначения camera, иначе Blender сменит камеру сцены
     space.camera = cam
