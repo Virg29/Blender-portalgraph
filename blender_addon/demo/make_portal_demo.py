@@ -355,13 +355,6 @@ def orbs(prefix, coll, center, radius, bob):
         o = mesh_obj(f"{prefix} шар {i}", sphere(0.13 + 0.04 * (i % 2)), MAT[f"orb{i}"], coll, pivot,
                      (radius * math.cos(a), radius * math.sin(a), 0))
         drive(o, "location", 2, f"{bob}*sin(frame*0.05+{i * 1.3:.2f})")
-        light = bpy.data.lights.new(f"{prefix} свет шара {i}", "POINT")
-        light.color = MAT[f"orb{i}"].diffuse_color[:3]
-        light.energy = 12.0
-        light.shadow_soft_size = 0.07
-        lo = bpy.data.objects.new(light.name, light)
-        coll.objects.link(lo)
-        lo.parent = o
 
 
 def fireflies(prefix, coll, back, front, n_back, n_front, seed):
@@ -395,10 +388,12 @@ def fireflies(prefix, coll, back, front, n_back, n_front, seed):
             drive(o, "location", a, f"{base[a]:.3f}+{amp:.3f}*sin(frame*{freq:.4f}+{ph:.2f})")
 
 
-def light(coll, name, kind, loc, energy, color=(1, 1, 1), size=0.5, rot=(0, 0, 0)):
+def light(coll, name, kind, loc, energy, color=(1, 1, 1), size=0.5, rot=(0, 0, 0), shadow=False):
+    """Тени по умолчанию выключены: каждая лампа с тенью заметно роняет FPS вьюпорта EEVEE."""
     data = bpy.data.lights.new(name, kind)
     data.energy = energy
     data.color = color
+    data.use_shadow = shadow
     if kind == "AREA":
         data.size = size
     else:
@@ -424,6 +419,13 @@ def setup_scene(scene, dancer):
         except TypeError:
             pass
     scene.eevee.taa_samples = 4
+    # Скорость вьюпорта (замерено на встроенной Intel, вьюпорт 2361×1518, «Материалы»):
+    # тень только у верхнего света, без ламп в шарах и с дешёвыми тенями — 8 → ~25 fps,
+    # с половинным разрешением вьюпорта — ~57 fps. Мягкой тени от площадного света хватает.
+    scene.eevee.shadow_resolution_scale = 0.25
+    scene.eevee.shadow_ray_count = 1
+    scene.eevee.shadow_step_count = 1
+    scene.render.preview_pixel_size = "2"
     scene.eevee.taa_render_samples = 32
     scene.view_settings.view_transform = "Standard"
     scene.render.resolution_x, scene.render.resolution_y = 1920, 1080
@@ -446,7 +448,7 @@ def build_side(scene, dancer):
     # перед стеклом — до ~15 см (3.5 единицы) и ближе к центру, чтобы реже обрезались рамкой
     fireflies("Сбоку:", coll, ((-W / 2 + 0.4, y0 + 0.3, 0.3), (W / 2 - 0.4, y1 - 0.4, H - 0.4)),
               ((-W * 0.35, y0 - 3.5, H * 0.15), (W * 0.35, y0 - 0.3, H * 0.85)), 110, 40, seed=1)
-    light(coll, "Сбоку: верхний свет", "AREA", (0, 0, H - 0.05), 250, (1, 0.92, 0.95), 2.5)
+    light(coll, "Сбоку: верхний свет", "AREA", (0, 0, H - 0.05), 250, (1, 0.92, 0.95), 2.5, shadow=True)
     light(coll, "Сбоку: голубой", "POINT", (-2.8, 2.0, 2.2), 150, (0.2, 0.7, 1))
     light(coll, "Сбоку: розовый", "POINT", (2.8, 2.0, 2.2), 150, (1, 0.3, 0.7))
     light(coll, "Сбоку: заполняющий", "AREA", (0, y0 + 0.1, 1.5), 60, (1, 1, 1), 3.0,
@@ -465,7 +467,7 @@ def build_top(scene, dancer):
     orbs("Сверху:", coll, (0, 0, PIT), 1.5, 0.8)
     fireflies("Сверху:", coll, ((-W / 2 + 0.4, -H / 2 + 0.4, 0.3), (W / 2 - 0.4, H / 2 - 0.4, PIT - 0.3)),
               ((-W * 0.35, -H * 0.35, PIT + 0.3), (W * 0.35, H * 0.35, PIT + 3.5)), 90, 40, seed=2)
-    light(coll, "Сверху: верхний свет", "AREA", (0, 0, PIT - 0.1), 300, (1, 0.92, 0.95), 2.5)
+    light(coll, "Сверху: верхний свет", "AREA", (0, 0, PIT - 0.1), 300, (1, 0.92, 0.95), 2.5, shadow=True)
     light(coll, "Сверху: голубой", "POINT", (-3.0, 1.5, 1.5), 150, (0.2, 0.7, 1))
     light(coll, "Сверху: розовый", "POINT", (3.0, -1.5, 1.5), 150, (1, 0.3, 0.7))
     setup_scene(scene, dancer)
