@@ -853,6 +853,12 @@ class HEADTRACK_OT_start(bpy.types.Operator):
     bl_label = "Старт"
     bl_description = "Подключиться к серверу и перехватить этот вьюпорт"
 
+    @classmethod
+    def poll(cls, context):
+        # повторный старт (например, через F3) перезаписал бы резервную копию уже
+        # подменёнными настройками — после «Стоп» вьюпорт не вернулся бы как было
+        return state.receiver is None
+
     def execute(self, context):
         props = context.scene.head_tracking
         area = context.area
@@ -882,6 +888,10 @@ class HEADTRACK_OT_stop(bpy.types.Operator):
     bl_idname = "head_tracking.stop"
     bl_label = "Стоп"
     bl_description = "Отключиться и вернуть вьюпорт как было"
+
+    @classmethod
+    def poll(cls, context):
+        return state.receiver is not None
 
     def execute(self, context):
         stop()
