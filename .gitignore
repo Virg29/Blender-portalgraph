@@ -1,0 +1,16 @@
+# окружение и сборка
+.venv/
+build/
+dist/
+__pycache__/
+*.pyc
+blender_addon/*.zip
+
+# локальные настройки трекера
+headtracker_settings.json
+
+# мусор Blender и редакторов
+*.blend1
+*.blend2
+.idea/
+.vscode/
