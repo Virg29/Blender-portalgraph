@@ -26,8 +26,8 @@ from mathutils import Matrix, Quaternion, Vector
 bl_info = {
     "name": "Head Tracking",
     "author": "virg",
-    "version": (0, 10, 0),
-    "blender": (3, 6, 0),
+    "version": (0, 10, 1),
+    "blender": (4, 2, 0),
     "location": "3D Viewport > N-панель > View > Head Tracking",
     "description": "Управление видом вьюпорта положением головы с вебкамеры (headtracking-server)",
     "category": "3D View",
