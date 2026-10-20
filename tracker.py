@@ -316,7 +316,11 @@ class Tracker:
             min_face_detection_confidence=0.5,
             min_tracking_confidence=0.5,
         )
-        landmarker = vision.FaceLandmarker.create_from_options(options)
+        try:
+            landmarker = vision.FaceLandmarker.create_from_options(options)
+        except Exception as e:  # битая модель, нет нужных библиотек и т.п.
+            self._set(status=f"Не загрузилась модель: {e}")
+            return
         grabber = None
         seq = 0
         t0 = time.time()
@@ -357,11 +361,19 @@ class Tracker:
                 # detect_for_video требует строго возрастающих меток времени
                 ts = max(int((t_cap - t0) * 1000), last_ts + 1)
                 last_ts = ts
-                full_w = frame.shape[1]
-                if full_w > PROC_MAX_W:
-                    frame = cv2.resize(frame, (PROC_MAX_W, round(frame.shape[0] * PROC_MAX_W / full_w)),
-                                       interpolation=cv2.INTER_AREA)
-                data = self._process(landmarker, frame, ts, px_scale=full_w / frame.shape[1])
+                try:
+                    if frame.ndim == 2:  # камера в оттенках серого (например, IR)
+                        frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+                    full_w = frame.shape[1]
+                    if full_w > PROC_MAX_W:
+                        frame = cv2.resize(frame, (PROC_MAX_W, round(frame.shape[0] * PROC_MAX_W / full_w)),
+                                           interpolation=cv2.INTER_AREA)
+                    data = self._process(landmarker, frame, ts, px_scale=full_w / frame.shape[1])
+                except Exception as e:
+                    # иначе исключение молча убивает поток: трекинг встаёт, а статус остаётся «Работает»
+                    self._set(status=f"Ошибка обработки кадра: {e}", data=None)
+                    time.sleep(0.2)
+                    continue
                 if not data["face"]:
                     self._raw_depth = None
 
